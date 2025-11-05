@@ -4,8 +4,14 @@ import { PieChart, Pie, Sector, Cell, ResponsiveContainer } from 'recharts';
 
 
 export default function PieChartComponent({pieData}) {
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  const generateColors = (count) => {
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      const hue = (i * 360) / count;
+      colors.push(`hsl(${hue}, 70%, 50%)`);
+    }
+    return colors;
+  };
 
   const RADIAN = Math.PI / 180;
   const data = Object.entries(pieData).map(([id, { Weight, Ticker }]) => ({
@@ -15,6 +21,8 @@ export default function PieChartComponent({pieData}) {
     Weight,  // Keep Weight for later use in labels
   }));
   console.log(pieData)
+
+  const COLORS = generateColors(data.length);
 
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
