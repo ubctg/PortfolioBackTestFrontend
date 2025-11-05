@@ -7,15 +7,15 @@ export default function Ratios({information = 0, trenor = 0, sharpe = 0}) {
     return (
         <Card
         style={{
-            width: '18rem',
+            width: '20rem',
             backgroundColor: "black",
-            color: "white",
-            border: "2px solid", 
-            animation: "borderDraw 5s forwards", 
+            animation: "borderDraw 3s forwards", 
         }}
         >
         <Card.Body>
-            <Card.Title>Information Ratio</Card.Title>
+            <Card.Title>S&P Regression</Card.Title>
+            <br />
+            <Card.Subtitle>Information Ratio</Card.Subtitle>
             <Card.Text>
                 <h1>{information.toFixed(2)}</h1>
             </Card.Text>
