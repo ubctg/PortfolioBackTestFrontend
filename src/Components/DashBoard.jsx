@@ -7,7 +7,6 @@ import Button from "react-bootstrap/esm/Button";
 import Ratios from "./Ratios";
 import './borderDraw.css'
 import StockTable from "./StockTable";
-import GranularLineGraph from "./GranularLineGraph";
 import ReturnsModal from "./ReturnsModal"
 
 export default function DashBoard({jsonData}){
@@ -39,8 +38,6 @@ export default function DashBoard({jsonData}){
         trenor: 0,
         sharpe: 0
     })
-
-    // This is the data for the specific month chosen
     const [data, setData] = useState(
         {
             pieData: [],
@@ -57,17 +54,16 @@ export default function DashBoard({jsonData}){
         setData({pieData: allocationsData[monthsMap[e]], tableData: allocationsData[monthsMap[e]], balance: balanceData[monthsMap[e]], shortfall: esData[monthsMap[e]]});
     }
 
-    const [showModal, setShowModal] = useState(false)
-    const [returnsData, setReturnsData] = useState()
+    const [showGranularLineGraphModal, setShowGranularLineGraphModal] = useState(false)
+    const [returnsData, setReturnsData] = useState({})
+    const [showRatiosTooltip, setShowRatiosTooltip] = useState(false)
     useEffect(() => {
         // Will need to fix this json object -> very messy 
         setBalanceData(jsonData[0]);
         setEsData(jsonData[1]);
         setAllocationsData(jsonData[2]);
         setSpData(jsonData[3]);
-        setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]})
-        
-
+        setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]})        
     }, []);
     useEffect(() => {
         var month = monthsMap[selectedMonth] + 1
@@ -111,18 +107,44 @@ export default function DashBoard({jsonData}){
                         <div className="box">
                             <AdditionalInfo balance={data.balance.toFixed(2)} shortfall={data.shortfall.toFixed(2)}/>   
                         </div>
-                    </div>    
+                    </div> 
+                    
                     <div style={{display: "flex", justifyContent: "center", alignContent: "center"}}>
-                        <Button style={{margin: 7, width: 150}} variant="outline-light" > S&P Regression Info</Button>
-                        <Button style={{margin: 7, width: 150}} variant="outline-light" > Sector Regression Info</Button>
-                        <Button onClick={() => setShowModal(true)} style={{margin: 7, width: 150}} variant="outline-light" > Stock Data</Button>
+                        <div style={{position: 'relative', display: 'inline-block'}}>
+                            <Button
+                                style={{margin: 7, width: 150}}
+                                variant="outline-light"
+                                onMouseEnter={() => setShowRatiosTooltip(true)}
+                                onMouseLeave={() => setShowRatiosTooltip(false)}
+                            >
+                                Ratio Metrics
+                            </Button>
+                            {showRatiosTooltip && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '110%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    background: 'rgba(30,30,30,0.95)',
+                                    borderRadius: '8px',
+                                    padding: '16px',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                    zIndex: 1000,
+                                    minWidth: '220px'
+                                }}>
+                                    <Ratios information={ratios.information} trenor={ratios.trenor} sharpe={ratios.sharpe}/>
+                                </div>
+                            )}
+                        </div>
+                        <Button onClick={() => setShowGranularLineGraphModal(true)} style={{margin: 7, width: 150}} variant="outline-light" > Granular Stocks</Button>
                     </div>
                     <ReturnsModal 
                         stockData={returnsData} 
-                        showModal={showModal} 
-                        onClose={() => setShowModal(false)}
+                        showModal={showGranularLineGraphModal} 
+                        onClose={() => setShowGranularLineGraphModal(false)}
                         allocations={data.tableData}
-                        balance={balanceData[monthsMap[selectedMonth]]}/>
+                        balance={balanceData[monthsMap[selectedMonth]]}
+                        selectedMonth={selectedMonth}/>
                 </>
             }
             {
