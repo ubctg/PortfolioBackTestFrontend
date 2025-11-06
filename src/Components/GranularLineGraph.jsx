@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,13 +10,11 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-export default function GranularLineGraph({ stockData }) {
-  const [visibleStocks, setVisibleStocks] = useState({
-    AAPL: true,
-    IBM: true,
-    MSFT: true,
-    TSLA: true
-  });
+export default function GranularLineGraph({ stockData, selectedMonth }) {
+  const tickers = Object.keys(stockData);
+  const [visibleStocks, setVisibleStocks] = useState(
+    tickers.reduce((acc, ticker) => ({ ...acc, [ticker]: true }), {})
+  );
 
   const handleLegendClick = (e) => {
     const { dataKey } = e;
@@ -25,20 +23,25 @@ export default function GranularLineGraph({ stockData }) {
       [dataKey]: !prev[dataKey]
     }));
   };
-
   const prepareData = () => {
-    const dates = Array.from({ length: stockData['AAPL'].length }, (_, i) => `Day ${i + 1}`);
-    const formattedData = dates.map((date, index) => ({
-      date,
-      AAPL: stockData['AAPL'][index],
-      IBM: stockData['IBM'][index],
-      MSFT: stockData['MSFT'][index],
-      TSLA: stockData['TSLA'][index],
-    }));
-    return formattedData;
+    if (tickers.length === 0) return [];
+    const length = stockData[tickers[0]].length;
+    const month = selectedMonth || "Jan";
+    const dates = Array.from({ length }, (_, i) => `${month} ${i + 1}`);
+    return dates.map((date, index) => {
+      const entry = { date };
+      tickers.forEach(ticker => {
+        entry[ticker] = stockData[ticker][index];
+      });
+      return entry;
+    });
   };
 
   const data = prepareData();
+  const colors = [
+    "#8884d8", "#82ca9d", "#2a453d", "#ff7300", "#0088FE", "#00C49F", "#FFBB28", "#FF8042"
+  ];
+  const getColor = (idx) => colors[idx % colors.length];
 
   return (
     <ResponsiveContainer width="100%" height={400}>
@@ -48,35 +51,16 @@ export default function GranularLineGraph({ stockData }) {
         <YAxis />
         <Tooltip />
         <Legend onClick={handleLegendClick} />
-
-        <Line 
-          type="monotone" 
-          dataKey="AAPL" 
-          stroke="#8884d8" 
-          strokeWidth={visibleStocks.AAPL ? 2 : 0} 
-          dot={false} 
-        />
-        <Line 
-          type="monotone" 
-          dataKey="IBM" 
-          stroke="#82ca9d" 
-          strokeWidth={visibleStocks.IBM ? 2 : 0} 
-          dot={false}  
-        />
-        <Line 
-          type="monotone" 
-          dataKey="MSFT" 
-          stroke="#2a453d"
-          strokeWidth={visibleStocks.MSFT ? 2 : 0} 
-          dot={false}  
-        />
-        <Line 
-          type="monotone" 
-          dataKey="TSLA" 
-          stroke="#ff7300" 
-          strokeWidth={visibleStocks.TSLA ? 2 : 0} 
-          dot={false}  
-        />
+        {tickers.map((ticker, idx) => (
+          <Line
+            key={ticker}
+            type="monotone"
+            dataKey={ticker}
+            stroke={getColor(idx)}
+            strokeWidth={visibleStocks[ticker] ? 2 : 0}
+            dot={false}
+          />
+        ))}
       </LineChart>
     </ResponsiveContainer>
   );
