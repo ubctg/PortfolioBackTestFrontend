@@ -8,8 +8,9 @@ import Ratios from "./Ratios";
 import './borderDraw.css'
 import StockTable from "./StockTable";
 import ReturnsModal from "./ReturnsModal"
+import EngineWait from "./EngineWait"
 
-export default function DashBoard({jsonData}){
+export default function DashBoard({startDate = "2020-03-01", endDate = "2020-12-01", startingBalance = 10000.0}){
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthsMap = {
                         "Jan": 0,
@@ -27,7 +28,6 @@ export default function DashBoard({jsonData}){
                     };
     
     // This is the data for all months
-    // We will need to change this using Redux, make it less messy
     const [selectedMonth, setSelectedMonth] = useState("Jan");
     const [balanceData, setBalanceData] = useState([]);
     const [esData, setEsData] = useState([]);
@@ -38,6 +38,10 @@ export default function DashBoard({jsonData}){
         trenor: 0,
         sharpe: 0
     })
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // This is the data for the specific month chosen
     const [data, setData] = useState(
         {
             pieData: [],
@@ -57,28 +61,50 @@ export default function DashBoard({jsonData}){
     const [showGranularLineGraphModal, setShowGranularLineGraphModal] = useState(false)
     const [returnsData, setReturnsData] = useState({})
     const [showRatiosTooltip, setShowRatiosTooltip] = useState(false)
+
+    // Fetch main backtest data on component mount
     useEffect(() => {
-        // Will need to fix this json object -> very messy 
-        setBalanceData(jsonData[0]);
-        setEsData(jsonData[1]);
-        setAllocationsData(jsonData[2]);
-        setSpData(jsonData[3]);
-        setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]})        
-    }, []);
-    useEffect(() => {
-        var month = monthsMap[selectedMonth] + 1
-        month = month < 10? '0' + month : month
-        const returnsUrl = process.env.REACT_APP_API_URL + `/returns?start_date=2022-${month}-01&end_date=2022-${month}-31`;
-        console.log(returnsUrl)
-        fetch(returnsUrl)
-        .then(response => response.json())
-        .then(jsonData => {
-          setReturnsData(jsonData);
-        })
-        .catch(error => {
-          alert('Error fetching returns: Please try again or contact UBCTG Quant Division. \n' + error);        
-        });
-    }, [selectedMonth])
+        const fetchBacktestData = async () => {
+            try {
+                setLoading(true);
+                const dataUrl = process.env.REACT_APP_API_URL + '/data';
+                
+                const response = await fetch(dataUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const jsonData = await response.json();
+                console.log('Backtest data received:', jsonData);
+
+                setBalanceData(jsonData.balance_history);
+                setEsData(jsonData.es_history);
+                setAllocationsData(jsonData.stock_history);
+                setSpData(jsonData.s_p);
+                setRatios({
+                    information: jsonData.information_ratio,
+                    trenor: jsonData.treynor_ratio,
+                    sharpe: jsonData.sharpe_ratio
+                });
+                setLoading(false);
+
+            } catch (error) {
+                console.error('Error fetching backtest data:', error);
+                setError(error.message);
+                setLoading(false);
+                alert('Error fetching backtest data: Please try again or contact UBCTG Quant Division. \n' + error);
+            }
+        };
+
+        fetchBacktestData();
+    }, [startDate, endDate, startingBalance]);
+
+    // Show EngineWait component while loading or if there's an error
+    if (loading || error) {
+        return <EngineWait setLanding={() => {}} dataRec={!loading && !error} error={error !== null} />;
+    }
+
     return (
         <div style={{ backgroundColor: "black" }}>
             {
