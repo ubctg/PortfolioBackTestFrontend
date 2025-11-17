@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import MonthTabs from "./MonthTab";
 import PieChartComponent from "./PieChartComponent";
 import LineChartComponent from "./YearlyLineGraph";
@@ -8,8 +9,22 @@ import Ratios from "./Ratios";
 import './borderDraw.css'
 import StockTable from "./StockTable";
 import ReturnsModal from "./ReturnsModal"
+import { 
+    setBalanceData, 
+    setEsData, 
+    setAllocationsData, 
+    setSpData, 
+    setRatios,
+    setSelectedMonth,
+    setMonthChosen,
+    setData,
+    setShowGranularLineGraphModal,
+    setReturnsData,
+    setShowRatiosTooltip
+} from "../store/slices/portfolioSlice";
 
 export default function DashBoard({jsonData}){
+    const dispatch = useDispatch();
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthsMap = {
                         "Jan": 0,
@@ -26,59 +41,58 @@ export default function DashBoard({jsonData}){
                         "Dec": 11,
                     };
     
-    // This is the data for all months
-    // We will need to change this using Redux, make it less messy
-    const [selectedMonth, setSelectedMonth] = useState("Jan");
-    const [balanceData, setBalanceData] = useState([]);
-    const [esData, setEsData] = useState([]);
-    const [allocationsData, setAllocationsData] = useState([]);
-    const [spData, setSpData] = useState([])
-    const [ratios, setRatios] = useState({
-        information: 0,
-        trenor: 0,
-        sharpe: 0
-    })
-    const [data, setData] = useState(
-        {
-            pieData: [],
-            lineData: [],
-            tableData: [],
-            balance: 0,
-            shortfall: 0
-        });
+    const { 
+        selectedMonth, 
+        balanceData, 
+        esData, 
+        allocationsData, 
+        spData, 
+        ratios, 
+        data, 
+        monthChosen, 
+        showGranularLineGraphModal, 
+        returnsData, 
+        showRatiosTooltip 
+    } = useSelector((state) => state.portfolio);
 
-    const [monthChosen, setMonthChosen] = useState(false);
     const handleTabSwitch = e => {
-        setMonthChosen(true)
-        setSelectedMonth(e);
-        setData({pieData: allocationsData[monthsMap[e]], tableData: allocationsData[monthsMap[e]], balance: balanceData[monthsMap[e]], shortfall: esData[monthsMap[e]]});
+        dispatch(setMonthChosen(true));
+        dispatch(setSelectedMonth(e));
+        dispatch(setData({
+            pieData: allocationsData[monthsMap[e]], 
+            tableData: allocationsData[monthsMap[e]], 
+            balance: balanceData[monthsMap[e]], 
+            shortfall: esData[monthsMap[e]]
+        }));
     }
 
-    const [showGranularLineGraphModal, setShowGranularLineGraphModal] = useState(false)
-    const [returnsData, setReturnsData] = useState({})
-    const [showRatiosTooltip, setShowRatiosTooltip] = useState(false)
-    useEffect(() => {
-        // Will need to fix this json object -> very messy 
-        setBalanceData(jsonData[0]);
-        setEsData(jsonData[1]);
-        setAllocationsData(jsonData[2]);
-        setSpData(jsonData[3]);
-        setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]})        
-    }, []);
+    useEffect(() => {        
+        dispatch(setBalanceData(jsonData[0]));
+        dispatch(setEsData(jsonData[1]));
+        dispatch(setAllocationsData(jsonData[2]));
+        dispatch(setSpData(jsonData[3]));
+        dispatch(setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]}));
+    }, [dispatch, jsonData]);
+
     useEffect(() => {
         var month = monthsMap[selectedMonth] + 1
         month = month < 10? '0' + month : month
         const returnsUrl = process.env.REACT_APP_API_URL + `/returns?start_date=2022-${month}-01&end_date=2022-${month}-31`;
         console.log(returnsUrl)
-        fetch(returnsUrl)
+        fetch(returnsUrl, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})})
         .then(response => response.json())
         .then(jsonData => {
-          setReturnsData(jsonData);
+          dispatch(setReturnsData(jsonData));
         })
         .catch(error => {
           alert('Error fetching returns: Please try again or contact UBCTG Quant Division. \n' + error);        
         });
-    }, [selectedMonth])
+    }, [selectedMonth, monthsMap, dispatch])
     return (
         <div style={{ backgroundColor: "black" }}>
             {
@@ -114,8 +128,8 @@ export default function DashBoard({jsonData}){
                             <Button
                                 style={{margin: 7, width: 150}}
                                 variant="outline-light"
-                                onMouseEnter={() => setShowRatiosTooltip(true)}
-                                onMouseLeave={() => setShowRatiosTooltip(false)}
+                                onMouseEnter={() => dispatch(setShowRatiosTooltip(true))}
+                                onMouseLeave={() => dispatch(setShowRatiosTooltip(false))}
                             >
                                 Ratio Metrics
                             </Button>
@@ -136,12 +150,12 @@ export default function DashBoard({jsonData}){
                                 </div>
                             )}
                         </div>
-                        <Button onClick={() => setShowGranularLineGraphModal(true)} style={{margin: 7, width: 150}} variant="outline-light" > Granular Stocks</Button>
+                        <Button onClick={() => dispatch(setShowGranularLineGraphModal(true))} style={{margin: 7, width: 150}} variant="outline-light" > Granular Stocks</Button>
                     </div>
                     <ReturnsModal 
                         stockData={returnsData} 
                         showModal={showGranularLineGraphModal} 
-                        onClose={() => setShowGranularLineGraphModal(false)}
+                        onClose={() => dispatch(setShowGranularLineGraphModal(false))}
                         allocations={data.tableData}
                         balance={balanceData[monthsMap[selectedMonth]]}
                         selectedMonth={selectedMonth}/>
