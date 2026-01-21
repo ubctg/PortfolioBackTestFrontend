@@ -1,177 +1,433 @@
-import { useEffect } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useState, useEffect, useMemo } from "react";
+import stubbedData from "../stubbed_data.json";
 import MonthTabs from "./MonthTab";
 import PieChartComponent from "./PieChartComponent";
 import LineChartComponent from "./YearlyLineGraph";
 import AdditionalInfo from "./AdditionalInfo";
 import Button from "react-bootstrap/esm/Button";
 import Ratios from "./Ratios";
-import './borderDraw.css'
+import "./borderDraw.css";
 import StockTable from "./StockTable";
-import ReturnsModal from "./ReturnsModal"
-import { 
-    setBalanceData, 
-    setEsData, 
-    setAllocationsData, 
-    setSpData, 
-    setRatios,
-    setSelectedMonth,
-    setMonthChosen,
-    setData,
-    setShowGranularLineGraphModal,
-    setReturnsData,
-    setShowRatiosTooltip
-} from "../store/slices/portfolioSlice";
+import ReturnsModal from "./ReturnsModal";
+import EngineWait from "./EngineWait";
 
-export default function DashBoard({jsonData}){
-    const dispatch = useDispatch();
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthsMap = {
-                        "Jan": 0,
-                        "Feb": 1,
-                        "Mar": 2,
-                        "Apr": 3,
-                        "May": 4,
-                        "Jun": 5,
-                        "Jul": 6,
-                        "Aug": 7,
-                        "Sep": 8,
-                        "Oct": 9,
-                        "Nov": 10,
-                        "Dec": 11,
-                    };
-    
-    const { 
-        selectedMonth, 
-        balanceData, 
-        esData, 
-        allocationsData, 
-        spData, 
-        ratios, 
-        data, 
-        monthChosen, 
-        showGranularLineGraphModal, 
-        returnsData, 
-        showRatiosTooltip 
-    } = useSelector((state) => state.portfolio);
+const DEBUG_MODE = true;
 
-    const handleTabSwitch = e => {
-        dispatch(setMonthChosen(true));
-        dispatch(setSelectedMonth(e));
-        dispatch(setData({
-            pieData: allocationsData[monthsMap[e]], 
-            tableData: allocationsData[monthsMap[e]], 
-            balance: balanceData[monthsMap[e]], 
-            shortfall: esData[monthsMap[e]]
-        }));
-    }
+export default function DashBoard({
+	startDate = "2020-03-01",
+	endDate = "2020-12-01",
+	startingBalance = 10000.0,
+}) {
+	const months = useMemo(() => {
+		if (!startDate || !endDate) return [];
+		const start = startDate.split("-").map(Number);
+		const end = endDate.split("-").map(Number);
+		const labels = [];
 
-    useEffect(() => {        
-        dispatch(setBalanceData(jsonData[0]));
-        dispatch(setEsData(jsonData[1]));
-        dispatch(setAllocationsData(jsonData[2]));
-        dispatch(setSpData(jsonData[3]));
-        dispatch(setRatios({information: jsonData[4], trenor: jsonData[5], sharpe: jsonData[6]}));
-    }, [dispatch, jsonData]);
+		let [currY, currM] = [start[0], start[1]];
+		const [endY, endM] = [end[0], end[1]];
 
-    useEffect(() => {
-        var month = monthsMap[selectedMonth] + 1
-        month = month < 10? '0' + month : month
-        const returnsUrl = process.env.REACT_APP_API_URL + `/returns?start_date=2022-${month}-01&end_date=2022-${month}-31`;
-        console.log(returnsUrl)
-        fetch(returnsUrl, {
-        method: 'POST',
-        headers: {
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})})
-        .then(response => response.json())
-        .then(jsonData => {
-          dispatch(setReturnsData(jsonData));
-        })
-        .catch(error => {
-          alert('Error fetching returns: Please try again or contact UBCTG Quant Division. \n' + error);        
-        });
-    }, [selectedMonth, monthsMap, dispatch])
-    return (
-        <div style={{ backgroundColor: "black" }}>
-            {
-                monthChosen && 
-                <>
-                <img src="logo.png" alt="Logo" style={{ width: 200 , position: "absolute"}} />
-                    <div style={{ display: "flex", textAlign: "center", justifyContent: "center", alignContent: "center", flexDirection: "column", height: 125}}>
-                        <h1 style={{fontFamily: "Arial Arabic", animation: "borderDraw 5s forwards"}}>DASHBOARD</h1>
-                    </div>
-                    <hr style={{
-                        border: 50,height: 2,
-                        backgroundImage: "linear-gradient(to right, rgba(0, 0, 0, 0), rgba(255, 255, 255, 1.0), rgba(0, 0, 0, 0))"}} 
-                    />
-                    <MonthTabs months={months} handleTabSwitch={handleTabSwitch} /> 
+		const mNames = [
+			"Jan",
+			"Feb",
+			"Mar",
+			"Apr",
+			"May",
+			"Jun",
+			"Jul",
+			"Aug",
+			"Sep",
+			"Oct",
+			"Nov",
+			"Dec",
+		];
 
-                    <div className="cont" style={{width: "100%"}}>
-                        <div className="box">
-                            <LineChartComponent balanceHistory={balanceData} spData={spData} months={months}/>
-                        </div>
-                        <div className="box">
-                            <StockTable data = {data.tableData}/>
-                        </div>
-                        <div className="box">
-                            {balanceData.length > 0 && <PieChartComponent pieData={data.pieData} /> }
-                        </div>
-                        <div className="box">
-                            <AdditionalInfo balance={data.balance.toFixed(2)} shortfall={data.shortfall.toFixed(2)}/>   
-                        </div>
-                    </div> 
-                    
-                    <div style={{display: "flex", justifyContent: "center", alignContent: "center"}}>
-                        <div style={{position: 'relative', display: 'inline-block'}}>
-                            <Button
-                                style={{margin: 7, width: 150}}
-                                variant="outline-light"
-                                onMouseEnter={() => dispatch(setShowRatiosTooltip(true))}
-                                onMouseLeave={() => dispatch(setShowRatiosTooltip(false))}
-                            >
-                                Ratio Metrics
-                            </Button>
-                            {showRatiosTooltip && (
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: '110%',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    background: 'rgba(30,30,30,0.95)',
-                                    borderRadius: '8px',
-                                    padding: '16px',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                                    zIndex: 1000,
-                                    minWidth: '220px'
-                                }}>
-                                    <Ratios information={ratios.information} trenor={ratios.trenor} sharpe={ratios.sharpe}/>
-                                </div>
-                            )}
-                        </div>
-                        <Button onClick={() => dispatch(setShowGranularLineGraphModal(true))} style={{margin: 7, width: 150}} variant="outline-light" > Granular Stocks</Button>
-                    </div>
-                    <ReturnsModal 
-                        stockData={returnsData} 
-                        showModal={showGranularLineGraphModal} 
-                        onClose={() => dispatch(setShowGranularLineGraphModal(false))}
-                        allocations={data.tableData}
-                        balance={balanceData[monthsMap[selectedMonth]]}
-                        selectedMonth={selectedMonth}/>
-                </>
-            }
-            {
-                !monthChosen && 
-                <div style={{position: "absolute", backgroundColor: "black", width: "100%", height: "100%", paddingTop: -10}}>
-                <img src="logo.png" style = {{width: 200}} />
-                <div style={{textAlign: "center"}}>
-                    <h2 style={{color: "#892736", padding: 100}}>Please Choose A Month</h2>
-                    {months.map(x => <Button key={x} style={{margin: 7, width: 150}} variant = "outline-light" onClick={() => handleTabSwitch(x)}>{x}</Button>)}
-                </div>
-                </div>
-            }
-        </div>
-    );
-    
+		while (currY < endY || (currY === endY && currM <= endM)) {
+			const mName = mNames[currM - 1];
+			const yShort = currY.toString().slice(-2);
+			labels.push(`${mName} '${yShort}`);
+
+			currM++;
+			if (currM > 12) {
+				currM = 1;
+				currY++;
+			}
+		}
+		return labels;
+	}, [startDate, endDate]);
+
+	// This is the data for all months
+	const [selectedMonth, setSelectedMonth] = useState(
+		months.length > 0 ? months[0] : "",
+	);
+	const [balanceData, setBalanceData] = useState([]);
+	const [esData, setEsData] = useState([]);
+	const [allocationsData, setAllocationsData] = useState([]);
+	const [spData, setSpData] = useState([]);
+	const [ratios, setRatios] = useState({
+		information: 0,
+		trenor: 0,
+		sharpe: 0,
+	});
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
+	// This is the data for the specific month chosen
+	const [data, setData] = useState({
+		pieData: [],
+		lineData: [],
+		tableData: [],
+		balance: 0,
+		shortfall: 0,
+	});
+
+	const [monthChosen, setMonthChosen] = useState(false);
+	const [returnsData, setReturnsData] = useState({});
+	const [showGranularLineGraphModal, setShowGranularLineGraphModal] =
+		useState(false);
+	const [showRatiosTooltip, setShowRatiosTooltip] = useState(false);
+
+	const handleTabSwitch = (e) => {
+		setMonthChosen(true);
+		setSelectedMonth(e);
+		const idx = months.indexOf(e);
+		const currentData = allocationsData[idx] || {};
+
+		setData({
+			pieData: currentData,
+			tableData: currentData,
+			balance: balanceData[idx] || 0,
+			shortfall: esData[idx] || 0,
+		});
+
+		const newReturnsData = {};
+		if (currentData && typeof currentData === "object") {
+			Object.values(currentData).forEach((stock) => {
+				if (stock.Ticker && stock.DailyReturns) {
+					newReturnsData[stock.Ticker] = stock.DailyReturns;
+				}
+			});
+		}
+		setReturnsData(newReturnsData);
+	};
+
+	// Auto-select first month when data constitutes
+	useEffect(() => {
+		if (!monthChosen && allocationsData.length > 0 && balanceData.length > 0) {
+			// Instead of calling handleTabSwitch which depends on state content potentially not updated in closure if defined simply,
+			// We can just manually call the logic or trust that allocationsData in this scope is updated because of the dependency array.
+			// Since we are in useEffect [allocationsData], 'allocationsData' is fresh.
+
+			const startMonth = months[0];
+			setMonthChosen(true);
+			setSelectedMonth(startMonth);
+			const idx = 0;
+			const currentData = allocationsData[idx] || {};
+
+			setData({
+				pieData: currentData,
+				tableData: currentData,
+				balance: balanceData[idx] || 0,
+				shortfall: esData[idx] || 0,
+			});
+
+			const newReturnsData = {};
+			if (currentData && typeof currentData === "object") {
+				Object.values(currentData).forEach((stock) => {
+					if (stock.Ticker && stock.DailyReturns) {
+						newReturnsData[stock.Ticker] = stock.DailyReturns;
+					}
+				});
+			}
+			setReturnsData(newReturnsData);
+		}
+	}, [allocationsData, balanceData, monthChosen, months]);
+
+	// Fetch main backtest data on component mount
+	useEffect(() => {
+		const fetchBacktestData = async () => {
+			try {
+				setLoading(true);
+				setMonthChosen(false);
+
+				if (DEBUG_MODE) {
+					console.log("DEBUG: Using stubbed data");
+					setBalanceData(stubbedData.balance_history);
+					setEsData(stubbedData.es_history);
+					setAllocationsData(stubbedData.stock_history);
+					setSpData(stubbedData.s_p);
+					setRatios({
+						information: stubbedData.information_ratio,
+						trenor: stubbedData.treynor_ratio,
+						sharpe: stubbedData.sharpe_ratio,
+					});
+					setLoading(false);
+					return;
+				}
+
+				const dataUrl = `${process.env.REACT_APP_API_URL}data`;
+				const response = await fetch(dataUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						start_date: startDate,
+						end_date: endDate,
+						starting_balance: startingBalance,
+					}),
+				});
+				if (!response.ok) {
+					throw new Error(
+						`POST /data failed: ${response.status} ${response.statusText}`,
+					);
+				}
+				const result = await response.json();
+
+				setBalanceData(result.balance_history);
+				setEsData(result.es_history);
+				setAllocationsData(result.stock_history);
+				setSpData(result.s_p);
+				setRatios({
+					information: result.information_ratio,
+					trenor: result.treynor_ratio,
+					sharpe: result.sharpe_ratio,
+				});
+
+				setLoading(false);
+			} catch (error) {
+				console.error("Error fetching backtest data:", error);
+				setError(error.message);
+				setLoading(false);
+				alert(
+					"Error fetching backtest data: Please try again or contact UBCTG Quant Division. \n" +
+						error,
+				);
+			}
+		};
+
+		fetchBacktestData();
+	}, [startDate, endDate, startingBalance]);
+
+	// Show EngineWait component while loading or if there's an error
+	if (loading || error) {
+		return (
+			<EngineWait
+				setLanding={() => {}}
+				dataRec={!loading && !error}
+				error={error !== null}
+			/>
+		);
+	}
+
+	return (
+		<div
+			style={{
+				backgroundColor: "#121212",
+				minHeight: "100vh",
+				color: "white",
+				paddingBottom: "50px",
+			}}
+		>
+			<div
+				style={{
+					padding: "20px",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "space-between",
+					flexWrap: "wrap",
+					borderBottom: "1px solid #333",
+				}}
+			>
+				<div style={{ display: "flex", alignItems: "center" }}>
+					<img
+						src="logo.png"
+						alt="Logo"
+						style={{ width: 100, marginRight: "20px" }}
+					/>
+					<h2
+						style={{
+							fontFamily: "Arial, sans-serif",
+							fontWeight: "bold",
+							margin: 0,
+							letterSpacing: "2px",
+						}}
+					>
+						DASHBOARD
+					</h2>
+				</div>
+				<div>{/* Header Controls could go here */}</div>
+			</div>
+
+			{/* Global Performance Section - Separated from Month Selection */}
+			<div
+				style={{
+					padding: "20px",
+					display: "flex",
+					flexWrap: "wrap",
+					gap: "20px",
+					justifyContent: "center",
+				}}
+			>
+				<div
+					className="dashboard-card"
+					style={{
+						backgroundColor: "#1e1e1e",
+						padding: "20px",
+						borderRadius: "8px",
+						flex: "1 1 auto",
+						maxWidth: "1000px",
+					}}
+				>
+					<h4
+						style={{ marginBottom: "15px", color: "#ddd", textAlign: "center" }}
+					>
+						Portfolio Performance
+					</h4>
+					<LineChartComponent
+						balanceHistory={balanceData}
+						spData={spData}
+						months={months}
+						onMonthClick={handleTabSwitch}
+					/>
+				</div>
+
+				<div
+					className="dashboard-card"
+					style={{
+						backgroundColor: "#1e1e1e",
+						padding: "20px",
+						borderRadius: "8px",
+						flex: "0 1 400px",
+						display: "flex",
+						flexDirection: "column",
+					}}
+				>
+					<h4
+						style={{
+							marginBottom: "15px",
+							textAlign: "center",
+							color: "#ddd",
+						}}
+					>
+						Risk Ratios
+					</h4>
+					<Ratios
+						information={ratios.information}
+						trenor={ratios.trenor}
+						sharpe={ratios.sharpe}
+					/>
+				</div>
+			</div>
+
+			{/* Navigation / Month Selection */}
+			<div
+				style={{ padding: "20px 0", display: "flex", justifyContent: "center" }}
+			>
+				<MonthTabs
+					months={months}
+					handleTabSwitch={handleTabSwitch}
+					activeMonth={selectedMonth}
+				/>
+			</div>
+
+			{monthChosen ? (
+				<div
+					style={{
+						padding: "0 20px",
+						display: "flex",
+						flexWrap: "wrap",
+						gap: "20px",
+						justifyContent: "center",
+						alignItems: "flex-start",
+					}}
+				>
+					{/* Stock Table */}
+					<div
+						className="dashboard-card"
+						style={{
+							backgroundColor: "#1e1e1e",
+							padding: "20px",
+							borderRadius: "8px",
+							overflow: "hidden",
+							flex: "1 1 500px",
+							maxWidth: "800px",
+						}}
+					>
+						<StockTable data={data.tableData} />
+					</div>
+
+					{/* Asset Allocation & Info */}
+					<div
+						className="dashboard-card"
+						style={{
+							backgroundColor: "#1e1e1e",
+							padding: "20px",
+							borderRadius: "8px",
+							flex: "1 1 400px",
+							display: "flex",
+							flexWrap: "wrap",
+							gap: "20px",
+							justifyContent: "center",
+							maxWidth: "800px",
+						}}
+					>
+						<div
+							style={{
+								flex: "1 1 300px",
+								minWidth: "300px",
+							}}
+						>
+							{balanceData.length > 0 ? (
+								<PieChartComponent pieData={data.pieData} />
+							) : (
+								<div
+									style={{
+										textAlign: "center",
+										padding: "50px",
+										color: "#666",
+									}}
+								>
+									No Allocation Data
+								</div>
+							)}
+						</div>
+
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								gap: "10px",
+								justifyContent: "center",
+								flex: "0 0 auto",
+							}}
+						>
+							<AdditionalInfo
+								balance={(data.balance || 0).toFixed(2)}
+								shortfall={(data.shortfall || 0).toFixed(2)}
+							/>
+							<Button
+								onClick={() => setShowGranularLineGraphModal(true)}
+								variant="outline-primary"
+								style={{ width: "100%", padding: "10px" }}
+							>
+								View Granular Stock Returns
+							</Button>
+						</div>
+					</div>
+				</div>
+			) : (
+				<div style={{ textAlign: "center", marginTop: "100px", color: "#666" }}>
+					Select a month to view details
+				</div>
+			)}
+
+			<ReturnsModal
+				stockData={returnsData}
+				showModal={showGranularLineGraphModal}
+				onClose={() => setShowGranularLineGraphModal(false)}
+				allocations={data.tableData}
+				balance={balanceData[months.indexOf(selectedMonth)]}
+				selectedMonth={selectedMonth}
+			/>
+		</div>
+	);
 }
