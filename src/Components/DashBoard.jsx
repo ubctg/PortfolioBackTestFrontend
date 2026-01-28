@@ -11,12 +11,13 @@ import StockTable from "./StockTable";
 import ReturnsModal from "./ReturnsModal";
 import EngineWait from "./EngineWait";
 
-const DEBUG_MODE = true;
-
 export default function DashBoard({
 	startDate = "2020-03-01",
 	endDate = "2020-12-01",
 	startingBalance = 10000.0,
+	debugMode = false,
+	onHome,
+	onBackToConfig,
 }) {
 	const months = useMemo(() => {
 		if (!startDate || !endDate) return [];
@@ -150,7 +151,7 @@ export default function DashBoard({
 				setLoading(true);
 				setMonthChosen(false);
 
-				if (DEBUG_MODE) {
+				if (debugMode) {
 					console.log("DEBUG: Using stubbed data");
 					setBalanceData(stubbedData.balance_history);
 					setEsData(stubbedData.es_history);
@@ -254,7 +255,18 @@ export default function DashBoard({
 						DASHBOARD
 					</h2>
 				</div>
-				<div>{/* Header Controls could go here */}</div>
+				<div>
+					<Button
+						variant="outline-light"
+						onClick={onBackToConfig}
+						style={{ marginRight: "10px" }}
+					>
+						Backtest Config
+					</Button>
+					<Button variant="outline-light" onClick={onHome}>
+						Home
+					</Button>
+				</div>
 			</div>
 
 			{/* Global Performance Section - Separated from Month Selection */}

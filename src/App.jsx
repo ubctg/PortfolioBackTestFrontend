@@ -16,6 +16,9 @@ function App() {
 		startingBalance: 10000.0,
 	});
 
+	// Global Debug Mode state
+	const [debugMode, setDebugMode] = useState(false);
+
 	const handleRunBacktest = (newConfig) => {
 		setBacktestConfig(newConfig);
 		setView("dashboard");
@@ -23,7 +26,13 @@ function App() {
 
 	return (
 		<>
-			{view === "landing" && <Landing dashClicked={() => setView("config")} />}
+			{view === "landing" && (
+				<Landing
+					dashClicked={() => setView("config")}
+					debugMode={debugMode}
+					toggleDebug={() => setDebugMode((prev) => !prev)}
+				/>
+			)}
 
 			{view === "config" && (
 				<BacktestConfig
@@ -37,6 +46,9 @@ function App() {
 					startDate={backtestConfig.startDate}
 					endDate={backtestConfig.endDate}
 					startingBalance={backtestConfig.startingBalance}
+					debugMode={debugMode}
+					onHome={() => setView("landing")}
+					onBackToConfig={() => setView("config")}
 				/>
 			)}
 		</>
